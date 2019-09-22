@@ -47,8 +47,11 @@ test_data = test_data.reset_index(drop=True)
 train_data = train_data.reset_index(drop=True)
 
 # Create new columns
-train_data['Family'] = train_data['SibSp'] + train_data['Parch']
-test_data['Family'] = test_data['SibSp'] + test_data['Parch']
+train_data['Family'] = train_data['SibSp'] + train_data['Parch'] + 1
+test_data['Family'] = test_data['SibSp'] + test_data['Parch'] + 1
+
+print(train_data["SibSp"].min())
+print(train_data["Parch"].min())
 
 interval = (0,130,260,390,520)
 categories = ['0-130','130-260','260-390','390-520']
@@ -60,8 +63,15 @@ categories = ['0-12','12-18','18-30','30-40','40-60','60-122']
 train_data['Age_Categories'] = pd.cut(train_data.Age, interval, labels = categories)
 test_data['Age_Categories'] = pd.cut(train_data.Age, interval, labels = categories)
 
+interval = (0,3,6,10)
+categories = ['0-3','3-6','6-10']
+train_data['Family_Size'] = pd.cut(train_data.Family, interval, labels = categories)
+test_data['Family_Size'] = pd.cut(train_data.Family, interval, labels = categories)
+
+print(train_data)
 
 # get dataframe info
+
 '''
 print("\nTrain Data\n")
 print(train_data.info())
@@ -71,7 +81,6 @@ print("\nTest Data\n")
 print(test_data.info())
 print(test_data.head(5))
 '''
-
 
 # Ploting each feture against survival rate
 '''
@@ -111,7 +120,6 @@ print(test_data.head(5))
 
 ##############################
 #Train
-
 ############################## Binary Classification with Linear Regression ##############################
 # Create and train a new LinearRegression model
 model = sklearn.linear_model.LinearRegression()
@@ -123,7 +131,7 @@ model.fit(train_data[cols], train_labels)
 Y_pred_proba = model.predict(test_data[cols])
 
 # Binarize the predictions by comparing to a threshold
-threshold = 0.53
+threshold = 0.50
 print("\nThreshold\n: ", threshold)
 Y_pred = (Y_pred_proba > threshold).astype(np.int_)
 
@@ -148,6 +156,7 @@ print("Recall: {:.3f}".format(recall))
 F1 = sklearn.metrics.f1_score(test_labels, Y_pred)
 print("F1: {:.3f}".format(recall))
 
+'''
 # Compute a precision & recall graph
 precisions, recalls, thresholds = \
     sklearn.metrics.precision_recall_curve(test_labels, Y_pred_proba)
@@ -167,6 +176,7 @@ plt.title('Receiver operating characteristic')
 plt.show()
 auc_score = sklearn.metrics.roc_auc_score(test_labels, Y_pred_proba)
 print("AUC score: {:.3f}".format(auc_score))
+'''
 
 # Predict new labels for training data
 Y_pred_proba_training = model.predict(train_data[cols])
@@ -174,6 +184,7 @@ auc_score_training = sklearn.metrics.roc_auc_score(\
     train_labels, Y_pred_proba_training)
 print("Training AUC score: {:.3f}".format(auc_score_training))
 
+'''
 # Create a list of the abs(coeff) by feature
 coeff_abs_list = []
 for idx in range(len(model.coef_)):
@@ -185,7 +196,7 @@ coeff_abs_list.sort(reverse=True)
 # Print the coefficients in order
 for idx in range(len(model.coef_)):
     print("Feature: {:26s} abs(coef): {:.4f}".format(coeff_abs_list[idx][1], coeff_abs_list[idx][0]))
-############################################################
+'''
 
 # saving reesults to csv file
 results = pd.read_csv("test.csv", header=0)
@@ -197,4 +208,63 @@ results = results[cols]
 results = results.set_index('PassengerId')
 print(results.columns)
 print(results)
-results.to_csv('Results.csv')
+
+try:
+    file_name = 'Binary Classification with Linear Regression Results.csv'
+    results.to_csv(file_name)
+except:
+    print("An exception occurred")
+else:
+    print("File", file_name, "saved!")
+
+
+
+############################################################
+############################## Random Forest ##############################
+
+'''
+# Feature Scaling
+from sklearn.preprocessing import StandardScaler
+
+sc = StandardScaler()
+train_data = sc.fit_transform(train_data)
+test_data = sc.transform(test_data)
+'''
+
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.datasets import make_classification
+
+#Create a Gaussian Classifier
+clf=RandomForestClassifier(n_estimators=100)
+
+#Train the model using the training sets y_pred=clf.predict(X_test)
+clf.fit(train_data,train_labels)
+
+y_pred=clf.predict(test_data)
+
+#Import scikit-learn metrics module for accuracy calculation
+from sklearn import metrics
+
+# Model Accuracy, how often is the classifier correct?
+print("Accuracy:",metrics.accuracy_score(test_labels, y_pred))
+
+print(y_pred)
+
+results2 = pd.read_csv("test.csv", header=0)
+
+results2['Survived'] = Y_pred
+cols = ['PassengerId', 'Survived']
+results2 = results2[cols]
+results2 = results2.set_index('PassengerId')
+print(results2.columns)
+print(results2)
+
+try:
+    file_name = 'Random Forest Results.csv'
+    results2.to_csv(file_name)
+except:
+    print("An exception occurred")
+else:
+    print("File", file_name, "saved!")
+
+
